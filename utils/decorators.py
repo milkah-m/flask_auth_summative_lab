@@ -3,13 +3,16 @@ from flask import request, jsonify, current_app, g
 import jwt
 from app.models import User
 
+
 def jwt_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         token = None
 
-        if "Authorization" in request.headers:
-            token = request.headers["Authorization"].split(" ")[1]
+        auth_header = request.headers.get("Authorization")
+
+        if auth_header:
+            token = auth_header.split(" ")[1]
 
         if not token:
             return jsonify({"error": "Token missing"}), 401
@@ -21,9 +24,14 @@ def jwt_required(f):
                 algorithms=["HS256"]
             )
 
-            g.user_id = data["user_id"]
+            user = User.query.get(data["user_id"])
 
-        except:
+            if not user:
+                return jsonify({"error": "User not found"}), 404
+
+            g.current_user = user   
+
+        except Exception:
             return jsonify({"error": "Invalid or expired token"}), 401
 
         return f(*args, **kwargs)

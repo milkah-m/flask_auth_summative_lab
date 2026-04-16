@@ -1,6 +1,7 @@
 from flask import Flask
 from .extensions import db, bcrypt, jwt
 from app.routes.auth import auth_bp
+from app.routes.moods import moods_bp
 
 def create_app():
     app = Flask(__name__)
@@ -11,11 +12,12 @@ def create_app():
     app.config["JWT_SECRET_KEY"] = "my-super-secret-key"
     
     app.register_blueprint(auth_bp)
+    app.register_blueprint(moods_bp)
 
     db.init_app(app)
     bcrypt.init_app(app)
     jwt.init_app(app)
 
     from app import models
-    
+
     return app

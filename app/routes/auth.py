@@ -5,7 +5,7 @@ from utils.decorators import jwt_required
 import jwt
 import datetime
 
-auth_bp = Blueprint("auth", __name__)
+auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
