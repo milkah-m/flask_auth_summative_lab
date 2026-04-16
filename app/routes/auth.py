@@ -1,6 +1,7 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 from app.extensions import db, bcrypt
 from app.models import User
+from utils.decorators import jwt_required
 import jwt
 import datetime
 
@@ -69,30 +70,16 @@ def login():
     }), 200
 
 @auth_bp.route("/me", methods=["GET"])
+@jwt_required
 def me():
-    token = None
 
-    if "Authorization" in request.headers:
-        token = request.headers["Authorization"].split(" ")[1]
-
-    if not token:
-        return jsonify({"error": "Token missing"}), 401
-
-    try:
-        data = jwt.decode(
-            token,
-            current_app.config["JWT_SECRET_KEY"],
-            algorithms=["HS256"]
-        )
-
-        user = User.query.get(data["user_id"])
+        user = User.query.get(g.user_id)
 
         return jsonify({
             "id": user.id,
             "username": user.username
         }), 200
 
-    except Exception:
-        return jsonify({"error": "Invalid or expired token"}), 401
+ 
 
 
