@@ -1,6 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from app.extensions import db, bcrypt
 from app.models import User
+import jwt
+import datetime
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -30,7 +32,67 @@ def signup():
 
     return jsonify({"message": "User created successfully"}), 201
 
-@auth_bp.route("/test")
-def test():
-    return {"message": "auth blueprint works"}
+@auth_bp.route("/login", methods=["POST"])
+def login():
+    data = request.get_json()
+
+    username = data.get("username")
+    password = data.get("password")
+
+    if not username or not password:
+        return jsonify({"error": "Missing username or password"}), 400
+
+    
+    user = User.query.filter_by(username=username).first()
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+  
+    if not bcrypt.check_password_hash(user.password_hash, password):
+        return jsonify({"error": "Incorrect password"}), 401
+
+   
+    token = jwt.encode(
+        {
+            "user_id": user.id,
+            "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+        },
+        current_app.config["JWT_SECRET_KEY"],
+        algorithm="HS256"
+    )
+
+   
+    return jsonify({
+        "message": "Login successful",
+        "token": token
+    }), 200
+
+@auth_bp.route("/me", methods=["GET"])
+def me():
+    token = None
+
+    if "Authorization" in request.headers:
+        token = request.headers["Authorization"].split(" ")[1]
+
+    if not token:
+        return jsonify({"error": "Token missing"}), 401
+
+    try:
+        data = jwt.decode(
+            token,
+            current_app.config["JWT_SECRET_KEY"],
+            algorithms=["HS256"]
+        )
+
+        user = User.query.get(data["user_id"])
+
+        return jsonify({
+            "id": user.id,
+            "username": user.username
+        }), 200
+
+    except Exception:
+        return jsonify({"error": "Invalid or expired token"}), 401
+
 
